@@ -8,7 +8,7 @@ use std::io::BufReader;
 pub struct WikiDoc {
     title: String,
     url: String,
-    r#abstract: String,
+    pub r#abstract: String,
 }
 
 impl Clone for WikiDoc {
@@ -32,7 +32,7 @@ fn load_corpus(fp: &str) -> std::io::Result<String> {
 pub fn parse_documents(fp: &str) -> Result<Vec<WikiDoc>, DeError> {
     let xml = match load_corpus(fp) {
         Ok(s) => s,
-        Err(e) => panic!("err : {}", e)
+        Err(e) => panic!("err : {}", e),
     };
     let docs = from_str::<Vec<WikiDoc>>(&xml)?;
     Ok(docs)
