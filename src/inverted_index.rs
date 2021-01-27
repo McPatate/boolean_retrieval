@@ -35,7 +35,8 @@ impl InvertedIndex {
                     None => panic!("unintialized postings list"),
                 };
                 if !postings.contains(&doc_id) {
-                    postings.push(doc_id);
+                    // postings.push(doc_id);
+                    InvertedIndex::sorted_insert(postings, doc_id);
                 }
             } else {
                 self.idx.insert(lt, vec![doc_id]);
@@ -50,9 +51,28 @@ impl InvertedIndex {
     }
 
     pub fn search(query: &str) {}
+
     fn parse_query() {}
-    fn intersect_not() {}
-    fn intersect() {}
+
+    fn intersect_not(p1: Vec<usize>, p2: Vec<usize>) -> Vec<usize> {
+        let mut res: Vec<usize> = Vec::new();
+        let mut i = 0;
+        let mut j = 0;
+        while i < p1.len() && j < p2.len() {
+            if p1[i] == p2[j] {
+                i += 1;
+                j += 1;
+            } else if p1[i] < p2[j] {
+                res.push(p1[i]);
+                i += 1;
+            } else {
+                j += 1;
+            }
+        }
+        res
+    }
+
+    fn intersect(p1: Vec<usize>, p2: Vec<usize>) {}
 
     fn lowercase_filter(tokens: Vec<String>) -> Vec<String> {
         let mut res: Vec<String> = Vec::with_capacity(tokens.len());
@@ -67,5 +87,26 @@ impl InvertedIndex {
             .split_terminator(|c: char| !c.is_alphanumeric())
             .map(|s| s.to_string())
             .collect()
+    }
+
+    fn sorted_insert(p: &mut Vec<usize>, v: usize) {
+        let mut low = 0;
+        let mut high = p.len() - 1;
+        let ipos;
+        while low <= high {
+            let mid = (high + low) / 2;
+            if p[mid] < v {
+                low = mid + 1
+            } else if p[mid] > v {
+                high = mid - 1
+            }
+        }
+        if low > high {
+            ipos = high + 1;
+        } else {
+            ipos = low
+        }
+        let upper_bound = v + 1;
+        p.splice(ipos..ipos, v..upper_bound);
     }
 }
