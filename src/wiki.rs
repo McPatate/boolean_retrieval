@@ -6,7 +6,7 @@ use std::io::BufReader;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct WikiDoc {
-    title: String,
+    pub title: String,
     url: String,
     pub r#abstract: String,
 }

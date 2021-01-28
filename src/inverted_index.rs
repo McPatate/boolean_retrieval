@@ -35,6 +35,7 @@ impl InvertedIndex {
                     None => panic!("unintialized postings list"),
                 };
                 if !postings.contains(&doc_id) {
+                    // TODO compare efficiency
                     // postings.push(doc_id);
                     InvertedIndex::sorted_insert(postings, doc_id);
                 }
@@ -50,14 +51,50 @@ impl InvertedIndex {
         }
     }
 
-    pub fn search(query: &str) {}
+    pub fn search(&self, query: &str) -> Option<Vec<usize>> {
+        let terms = InvertedIndex::parse_query(query);
+        if terms.len() == 3 {
+            let p1 = match self.idx.get(&terms[0]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            let p2 = match self.idx.get(&terms[2]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            if terms[1].contains("OR") {
+                Some(InvertedIndex::merge(p1, p2))
+            } else if terms[1].contains("AND") {
+                Some(InvertedIndex::intersect(p1, p2))
+            } else {
+                println!("Unsupported operator");
+                None
+            }
+        } else if terms.len() == 4 {
+            let p1 = match self.idx.get(&terms[0]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            let p2 = match self.idx.get(&terms[3]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            Some(InvertedIndex::intersect_not(p1, p2))
+        } else {
+            println!("query not supported, options are : OR, AND, AND NOT");
+            None
+        }
+    }
 
-    fn parse_query() {}
+    fn parse_query(query: &str) -> Vec<String> {
+        query.split_terminator(" ").map(|s| s.to_string()).collect()
+    }
 
-    fn intersect_not(p1: Vec<usize>, p2: Vec<usize>) -> Vec<usize> {
+    fn intersect_not(p1: &Vec<usize>, p2: &Vec<usize>) -> Vec<usize> {
         let mut res: Vec<usize> = Vec::new();
         let mut i = 0;
         let mut j = 0;
+
         while i < p1.len() && j < p2.len() {
             if p1[i] == p2[j] {
                 i += 1;
@@ -72,10 +109,45 @@ impl InvertedIndex {
         res
     }
 
-    fn intersect(p1: Vec<usize>, p2: Vec<usize>) {}
+    fn intersect(p1: &Vec<usize>, p2: &Vec<usize>) -> Vec<usize> {
+        let mut res = Vec::new();
+        let mut i = 0;
+        let mut j = 0;
+
+        while i < p1.len() && j < p2.len() {
+            if p1[i] == p2[j] {
+                res.push(p1[i]);
+                i += 1;
+                j += 1;
+            } else if p1[i] < p2[j] {
+                i += 1;
+            } else {
+                j += 1;
+            }
+        }
+        res
+    }
+
+    fn merge(p1: &Vec<usize>, p2: &Vec<usize>) -> Vec<usize> {
+        let mut res = Vec::new();
+        let mut i = 0;
+        let mut j = 0;
+
+        while i < p1.len() {
+            res.push(p1[i]);
+            i += 1;
+        }
+        while j < p2.len() {
+            res.push(p2[j]);
+            j += 1;
+        }
+        res.dedup();
+        res
+    }
 
     fn lowercase_filter(tokens: Vec<String>) -> Vec<String> {
         let mut res: Vec<String> = Vec::with_capacity(tokens.len());
+
         for token in tokens {
             res.push(token.to_lowercase());
         }
@@ -93,6 +165,7 @@ impl InvertedIndex {
         let mut low = 0;
         let mut high = p.len() - 1;
         let ipos;
+
         while low <= high {
             let mid = (high + low) / 2;
             if p[mid] < v {
