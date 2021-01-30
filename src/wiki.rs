@@ -3,22 +3,15 @@ use serde::Deserialize;
 use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
+use uuid::Uuid;
 
 #[derive(Debug, Deserialize, PartialEq)]
 pub struct WikiDoc {
+    #[serde(skip)]
+    pub id: String,
     pub title: String,
     url: String,
     pub r#abstract: String,
-}
-
-impl Clone for WikiDoc {
-    fn clone(&self) -> WikiDoc {
-        WikiDoc {
-            title: self.title.clone(),
-            url: self.url.clone(),
-            r#abstract: self.r#abstract.clone(),
-        }
-    }
 }
 
 fn load_corpus(fp: &str) -> std::io::Result<String> {
@@ -34,6 +27,9 @@ pub fn parse_documents(fp: &str) -> Result<Vec<WikiDoc>, DeError> {
         Ok(s) => s,
         Err(e) => panic!("err : {}", e),
     };
-    let docs = from_str::<Vec<WikiDoc>>(&xml)?;
+    let mut docs = from_str::<Vec<WikiDoc>>(&xml)?;
+    for doc in &mut docs {
+        doc.id = Uuid::new_v4().to_string();
+    }
     Ok(docs)
 }

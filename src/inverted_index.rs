@@ -7,7 +7,7 @@ use std::io::{BufReader, BufWriter};
 
 #[derive(Serialize, Deserialize)]
 pub struct InvertedIndex {
-    idx: HashMap<String, Vec<usize>>,
+    idx: HashMap<String, Vec<String>>,
 }
 
 impl InvertedIndex {
