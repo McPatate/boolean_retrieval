@@ -1,4 +1,5 @@
 mod inverted_index;
+mod skiplist;
 mod wiki;
 
 use inverted_index::InvertedIndex;

@@ -1,42 +1,83 @@
-pub struct IntoIter<T>(SkipList<T>);
+use std::iter;
+
+pub struct Iter<'a, T> {
+    next: Option<&'a Node<T>>,
+}
 
 type Link<T> = Option<Box<Node<T>>>;
 
 struct Node<T> {
-    key: T,
+    key: Option<T>,
     next: Vec<Link<T>>,
 }
 
-impl Node<T> {
-    fn next(&self, level: u8) -> Node<T> {
-        assert!(level >= 0);
-        self.next[level]
+impl<T> Node<T>
+where
+    T: Clone,
+{
+    fn new(key: T) -> Node<T> {
+        Node {
+            key: Some(key),
+            next: vec![None],
+        }
     }
 
-    fn set_next(&self, level: u8, n: Node<T>) -> () {
+    fn new_head(height: usize) -> Node<T> {
+        Node {
+            key: None,
+            next: iter::repeat(None).take(height).collect(),
+        }
+    }
+
+    fn next(&self, level: usize) -> Option<Link<T>> {
         assert!(level >= 0);
-        self.next[level] = n;
+        Some(self.next[level])
+    }
+
+    fn set_next(&mut self, n: Node<T>) -> () {
+        self.next.push(Some(Box::new(n)));
+    }
+}
+
+impl<T: Clone> Clone for Node<T> {
+    fn clone(&self) -> Node<T> {
+        Node {
+            key: self.key.clone(),
+            next: self.next.clone(),
+        }
     }
 }
 
 struct SkipList<T> {
-    head: Node<T>,
-    max_height: u8,
+    head: Link<T>,
+    k_max_height: u16,
+    max_height: u16,
+    branching_factor: u16,
 }
 
 impl<T> SkipList<T>
 where
-    T: Eq,
+    T: Clone,
     T: Ord,
 {
     pub fn insert() {}
     pub fn contains() {}
+    pub fn new(max_height: usize, branching_factor: u16) -> SkipList<T> {
+        SkipList {
+            max_height: 1,
+            k_max_height: max_height as u16,
+            branching_factor: branching_factor,
+            head: Some(Box::new(Node::new_head(max_height))),
+        }
+    }
 
-    fn get_max_height(&self) -> u8 {
+    fn get_max_height(&self) -> u16 {
         self.max_height
     }
 
-    fn random_height() -> u8 {}
+    fn random_height() -> u16 {
+        0
+    }
 
     fn equal(a: &T, b: &T) -> bool {
         a == b
@@ -45,17 +86,24 @@ where
     fn less_than(a: &T, b: &T) -> bool {
         a < b
     }
-    fn key_is_after_node(k: &T, n: Node<T>) -> bool {}
-    fn find_greater_or_equal(k: &T) -> Node<T> {}
-    fn find_less_than(k: &T) -> Node<T> {}
-    fn find_last() -> Node<T> {}
+    // fn key_is_after_node(k: &T, n: Node<T>) -> bool {}
+    // fn find_greater_or_equal(k: &T) -> Node<T> {}
+    // fn find_less_than(k: &T) -> Node<T> {}
+    // fn find_last() -> Node<T> {}
 
-    fn into_iter(self) -> IntoIter<T> {
-        IntoIter(self)
+    pub fn iter(&self) -> Iter<T> {
+        Iter {
+            next: self.head.as_deref(),
+        }
     }
 }
 
-impl<T> Iterator for IntoIter<T> {
-    type Item = T;
-    fn next(&self) -> Option<Self::Item> {}
-}
+// impl<'a, T> Iterator for Iter<'a, T> {
+//     type Item = &'a T;
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.next.map(|node| {
+//             self.next = node.next[0].as_deref();
+//             &node.key
+//         })
+//     }
+// }
