@@ -29,9 +29,13 @@ where
         }
     }
 
-    fn next(&self, level: usize) -> Option<Link<T>> {
+    fn key(&self) -> Option<&T> {
+        self.key.as_ref()
+    }
+
+    fn next(&self, level: usize) -> Link<T> {
         assert!(level >= 0);
-        Some(self.next[level])
+        self.next[level]
     }
 
     fn set_next(&mut self, n: Node<T>) -> () {
@@ -86,9 +90,30 @@ where
     fn less_than(a: &T, b: &T) -> bool {
         a < b
     }
-    // fn key_is_after_node(k: &T, n: Node<T>) -> bool {}
+    fn key_is_after_node(k: &T, n: Link<T>) -> bool {
+        let is_some = n.is_some();
+        let next_smaller = if is_some {
+            // will panic if n is head
+            let next_key = n.unwrap().key().unwrap();
+            next_key < k
+        } else {
+            false
+        };
+        next_smaller
+    }
+
     // fn find_greater_or_equal(k: &T) -> Node<T> {}
-    // fn find_less_than(k: &T) -> Node<T> {}
+
+    fn find_less_than(&self, k: &T) -> Node<T> {
+        let x = self.head;
+        let mut lvl = self.get_max_height();
+        let last_not_after = None;
+        while x.is_some() {
+            let next = x.unwrap();
+        }
+        Node::new(T::default())
+    }
+
     // fn find_last() -> Node<T> {}
 
     pub fn iter(&self) -> Iter<T> {
@@ -98,12 +123,15 @@ where
     }
 }
 
-// impl<'a, T> Iterator for Iter<'a, T> {
-//     type Item = &'a T;
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.next.map(|node| {
-//             self.next = node.next[0].as_deref();
-//             &node.key
-//         })
-//     }
-// }
+impl<'a, T> Iterator for Iter<'a, T> {
+    type Item = &'a T;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.next.map(|node| {
+            self.next = node.next[0].as_deref();
+            &node.key
+        }) {
+            Some(k) => k.as_ref(),
+            None => None,
+        }
+    }
+}
