@@ -16,17 +16,10 @@ impl<T> Node<T>
 where
     T: Clone,
 {
-    fn new(key: T, height: u16) -> Node<T> {
+    fn new(key: Option<T>, height: u16) -> Node<T> {
         Node {
-            key: Some(key),
-            next: vec![None],
-        }
-    }
-
-    fn new_head(height: usize) -> Node<T> {
-        Node {
-            key: None,
-            next: iter::repeat(None).take(height).collect(),
+            key: key,
+            next: iter::repeat(None).take(height.into()).collect(),
         }
     }
 
@@ -68,12 +61,12 @@ where
     T: Ord,
 {
     pub fn contains() {}
-    pub fn new(max_height: usize, branching_factor: u16) -> SkipList<T> {
+    pub fn new(max_height: u16, branching_factor: u16) -> SkipList<T> {
         SkipList {
             max_height: 1,
-            k_max_height: max_height as u16,
+            k_max_height: max_height,
             branching_factor: branching_factor,
-            head: Some(Box::new(Node::new_head(max_height))),
+            head: Some(Box::new(Node::new(None, max_height))),
             inverse_branching: 1.0 / branching_factor as f64,
         }
     }
@@ -91,15 +84,16 @@ where
     }
 
     fn key_is_after_node(k: &T, n: Link<T>) -> bool {
-        let is_some = n.is_some();
-        let next_smaller = if is_some {
-            // will panic if n is head
-            let next_key = n.unwrap().key().unwrap();
-            next_key < k
+        if n.is_some() {
+            let next_key = n.unwrap().key();
+            if next_key.is_none() {
+                false
+            } else {
+                next_key.unwrap() < k
+            }
         } else {
             false
-        };
-        next_smaller
+        }
     }
 
     pub fn insert(&mut self, key: T) {
@@ -109,21 +103,27 @@ where
         let mut x = self.head;
         for i in (0..self.max_height).rev() {
             loop {
-                if x.is_none() {
-                    break;
-                }
-                let node = *x.unwrap();
+                assert!(x.is_some());
+                let node = x.unwrap();
                 if SkipList::key_is_after_node(&key, node.next(i)) {
                     break;
                 }
-                x = x.unwrap().next(i);
+                x = node.next(i);
             }
             update[i as usize] = x;
         }
         // Here we will know if key is in list or not as we keep values in a HashMap
         let height = self.random_height();
         if height > self.get_max_height() {
+            for i in self.get_max_height()..height {
+                update[i as usize] = self.head;
+            }
             self.max_height = height;
+        }
+        let x = Some(Box::new(Node::new(Some(key), height)));
+        for i in 0..height {
+            x.unwrap().set_next(i, update[i as usize]);
+            update[i as usize].unwrap().set_next(i, x);
         }
     }
 
@@ -159,4 +159,9 @@ impl<'a, T> Iterator for Iter<'a, T> {
             None => None,
         }
     }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
 }
