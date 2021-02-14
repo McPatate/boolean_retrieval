@@ -32,14 +32,14 @@ fn main() {
         if let Some('\n') = s.chars().next_back() {
             s.pop();
         }
-        match ii.search(&s) {
-            Some(results) => {
-                for r in &results {
-                    println!("\n---- {} ----\n{}\n", docs[*r].title, docs[*r].r#abstract);
-                }
-                println!("{} hits\n", results.len());
-            }
-            None => println!("Nothing found"),
-        };
+        //        match ii.search(&s) {
+        //            Some(results) => {
+        //                for r in &results {
+        //                    println!("\n---- {} ----\n{}\n", docs[*r].title, docs[*r].r#abstract);
+        //                }
+        //                println!("{} hits\n", results.len());
+        //            }
+        //            None => println!("Nothing found"),
+        //        };
     }
 }
