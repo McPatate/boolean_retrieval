@@ -7,7 +7,7 @@ type Link<T> = Option<NonNull<Node<T>>>;
 
 /// A SkipList with owned nodes
 ///
-/// The `SkipList` allows insertion and search
+/// The `SkipList` allows search, insertion and deletion
 /// in *O*(*log*(*n*)) time.
 /// It keeps its members in sorted order.
 pub struct SkipList<T> {
@@ -89,36 +89,37 @@ where
         lvl
     }
 
-    fn insert(&mut self, key: T) {
-        let mut update: Vec<Link<T>> = iter::repeat(None)
-            .take(self.k_max_height as usize)
-            .collect();
-        let mut x = self.head.as_ref();
-        for i in (0..self.max_height).rev() {
-            loop {
-                assert!(x.is_some());
-                let node = x.unwrap();
-                if SkipList::key_is_after_node(&key, node.next(i)) {
-                    break;
+    // node must initialised with heght = 0
+    fn insert_node(&mut self, mut node: Box<Node<T>>) {
+        unsafe {
+            let mut update: Vec<Link<T>> = iter::repeat(None)
+                .take(self.k_max_height as usize)
+                .collect();
+            let mut x = self.head;
+            for i in (0..self.max_height).rev() {
+                loop {
+                    assert!(x.is_some());
+                    if x.next[i].is_none() || node.element > x.next[i].element {
+                        break;
+                    }
+                    x = x.next[i];
                 }
-                x = node.next(i);
+                update[i as usize] = x;
             }
-            update[i as usize] = x;
-        }
-        // Here we will know if key is in list or not as we keep values in a HashMap
-        let height = self.random_height();
-        if height > self.get_max_height() {
-            for i in self.get_max_height()..height {
-                update[i as usize] = self.head.as_ref();
+            // Here we will know if elt is in list or not as we keep values in a HashMap
+            let height = self.random_height();
+            if height > self.max_height {
+                for i in self.max_height..height {
+                    update[i as usize] = self.head;
+                }
+                self.max_height = height;
             }
-            self.max_height = height;
+            for i in 0..height {
+                node.next.push(update[i as usize].next[i]);
+                update[i as usize].next[i] = node;
+            }
+            self.len += 1;
         }
-        let x = Some(Box::new(Node::new(Some(key), height)));
-        for i in 0..height {
-            x.unwrap().set_next(i, update[i as usize]);
-            update[i as usize].unwrap().set_next(i, x);
-        }
-        self.len += 1;
     }
 }
 
@@ -163,7 +164,8 @@ where
 
     pub fn iter(&self) -> Iter<T> {
         Iter {
-            next: Some(&self.head.unwrap()),
+            head: self.head,
+            marker: PhantomData,
         }
     }
 }
@@ -173,11 +175,17 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.next.map(|node| {
             self.next = node.next[0].as_deref();
-            &node.key
+            &node.element
         }) {
             Some(k) => k.as_ref(),
             None => None,
         }
+    }
+}
+
+impl<T: Clone> Clone for SkipList<T> {
+    fn clone(&self) -> Self {
+        self.iter().cloned().collect()
     }
 }
 
