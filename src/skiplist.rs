@@ -21,31 +21,37 @@ pub struct SkipList<T> {
 }
 
 struct Node<T> {
-    element: T,
+    element: Option<T>,
     next: Vec<Link<T>>,
 }
 
 #[derive(Clone)]
 pub struct Iter<'a, T> {
     head: Link<T>,
+    len: usize,
     marker: PhantomData<&'a Node<T>>,
 }
 
-#[derive(Clone)]
-pub struct IntoIter<T> {
-    list: SkipList<T>,
-}
+// #[derive(Clone)]
+// pub struct IntoIter<T> {
+//     list: SkipList<T>,
+// }
 
 impl<T> Node<T> {
-    fn new(elt: T, height: u16) -> Self {
+    fn new(elt: Option<T>, height: u16) -> Self {
         Node {
             element: elt,
             next: iter::repeat(None).take(height.into()).collect(),
         }
     }
 
-    fn into_element(self: Box<Self>) -> T {
+    fn into_element(self: Box<Self>) -> Option<T> {
         self.element
+    }
+
+    fn new_head(height: u16) -> Link<T> {
+        let node = Box::new(Self::new(None, height));
+        Some(Box::leak(node).into())
     }
 
     //    fn key(&self) -> Option<&T> {
@@ -89,7 +95,7 @@ where
         lvl
     }
 
-    // node must initialised with heght = 0
+    // node must be initialised with heght = 0
     fn insert_node(&mut self, mut node: Box<Node<T>>) {
         unsafe {
             let mut update: Vec<Link<T>> = iter::repeat(None)
@@ -99,10 +105,17 @@ where
             for i in (0..self.max_height).rev() {
                 loop {
                     assert!(x.is_some());
-                    if x.next[i].is_none() || node.element > x.next[i].element {
+                    let x_node = x.unwrap().as_ptr();
+                    let x_next = (*x_node).next[i as usize];
+                    if x_next.is_none() {
                         break;
+                    } else {
+                        let x_next_node = x_next.unwrap().as_ptr();
+                        if node.element > (*x_next_node).element {
+                            break;
+                        }
                     }
-                    x = x.next[i];
+                    x = x_next;
                 }
                 update[i as usize] = x;
             }
@@ -115,19 +128,27 @@ where
                 self.max_height = height;
             }
             for i in 0..height {
-                node.next.push(update[i as usize].next[i]);
-                update[i as usize].next[i] = node;
+                let u = update[i as usize].unwrap().as_ptr();
+                node.next.push((*u).next[i as usize]);
+            }
+            let node = Some(Box::leak(node).into());
+            for i in 0..height {
+                let u = update[i as usize].unwrap().as_ptr();
+                (*u).next[i as usize] = node;
             }
             self.len += 1;
         }
     }
 }
 
-impl<T> Default for SkipList<T> {
+impl<T> Default for SkipList<T>
+where
+    T: Ord,
+{
     /// Creates an empty `SkipList<T>`
     #[inline]
     fn default() -> Self {
-        Self::new()
+        Self::new(16, 4)
     }
 }
 
@@ -141,11 +162,15 @@ where
             max_height: 1,
             k_max_height: max_height,
             branching_factor: branching_factor,
-            head: Some(Box::new(Node::new(None, max_height))),
+            head: Node::new_head(max_height),
             inverse_branching: 1.0 / branching_factor as f64,
             len: 0,
             marker: PhantomData,
         }
+    }
+
+    pub fn insert(&mut self, elt: T) {
+        self.insert_node(Box::new(Node::new(Some(elt), 0)));
     }
 
     // fn find_greater_or_equal(k: &T) -> Node<T> {}
@@ -165,6 +190,7 @@ where
     pub fn iter(&self) -> Iter<T> {
         Iter {
             head: self.head,
+            len: self.len,
             marker: PhantomData,
         }
     }
@@ -173,33 +199,45 @@ where
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
     fn next(&mut self) -> Option<Self::Item> {
-        match self.next.map(|node| {
-            self.next = node.next[0].as_deref();
-            &node.element
-        }) {
-            Some(k) => k.as_ref(),
-            None => None,
+        if self.len == 0 {
+            None
+        } else {
+            unsafe {
+                // head should never be none
+                assert!(self.head.is_some());
+                let head_node = self.head.unwrap().as_ptr();
+                self.head = (*head_node).next[0];
+                // this won't panic because len > 0
+                let head_node = self.head.unwrap().as_ptr();
+                (*head_node).element.as_ref()
+            }
         }
     }
 }
 
-impl<T: Clone> Clone for SkipList<T> {
-    fn clone(&self) -> Self {
-        self.iter().cloned().collect()
-    }
-}
+// impl<T> Clone for SkipList<T>
+// where
+//     T: Clone,
+//     T: Ord,
+// {
+//     fn clone(&self) -> Self {
+//         self.iter().cloned().collect()
+//     }
+// }
 
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
     fn test_insert() {
-        let sl: SkipList<String> = SkipList::new(16, 4);
+        let mut sl: SkipList<String> = SkipList::new(16, 4);
         sl.insert("wewt".to_string());
         sl.insert("blblblb".to_string());
         sl.insert("azerty".to_string());
-        let iterator = sl.iter();
-        assert_eq!(iterator.next(), Some("azerty"));
-        assert_eq!(iterator.next(), Some("blblblb"));
-        assert_eq!(iterator.next(), Some("wewt"));
+        let mut iterator = sl.iter();
+        assert_eq!(iterator.next(), Some(&"azerty".to_string()));
+        assert_eq!(iterator.next(), Some(&"blblblb".to_string()));
+        assert_eq!(iterator.next(), Some(&"wewt".to_string()));
     }
 }
