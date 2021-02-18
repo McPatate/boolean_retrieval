@@ -209,6 +209,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
                 self.head = (*head_node).next[0];
                 // this won't panic because len > 0
                 let head_node = self.head.unwrap().as_ptr();
+                self.len -= 1;
                 (*head_node).element.as_ref()
             }
         }
