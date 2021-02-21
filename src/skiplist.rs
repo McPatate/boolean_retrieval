@@ -1,4 +1,5 @@
 use rand::Rng;
+use std::fmt;
 use std::iter;
 use std::marker::PhantomData;
 use std::ptr::NonNull;
@@ -21,7 +22,7 @@ pub struct SkipList<T> {
 }
 
 struct Node<T> {
-    element: Option<T>,
+    element: T,
     next: Vec<Link<T>>,
 }
 
@@ -33,24 +34,25 @@ pub struct Iter<'a, T> {
 }
 
 // #[derive(Clone)]
-// pub struct IntoIter<T> {
-//     list: SkipList<T>,
-// }
+pub struct IntoIter<T> {
+    list: SkipList<T>,
+}
 
-impl<T> Node<T> {
-    fn new(elt: Option<T>, height: u16) -> Self {
+impl<T: Default> Node<T> {
+    fn new(elt: T, height: u16) -> Self {
         Node {
             element: elt,
             next: iter::repeat(None).take(height.into()).collect(),
         }
     }
 
-    fn into_element(self: Box<Self>) -> Option<T> {
+    pub fn into_element(self: Box<Self>) -> T {
         self.element
     }
 
     fn new_head(height: u16) -> Link<T> {
-        let node = Box::new(Self::new(None, height));
+        // any value will do
+        let node = Box::new(Self::new(Default::default(), height));
         Some(Box::leak(node).into())
     }
 
@@ -81,15 +83,11 @@ impl<T> Node<T> {
 // private methods
 impl<T> SkipList<T>
 where
-    T: Ord,
+    T: Ord + Default,
 {
-    fn get_max_height(&self) -> u16 {
-        self.max_height
-    }
-
     fn random_height(&self) -> u16 {
         let mut lvl = 1;
-        while lvl < self.max_height && rand::thread_rng().gen::<f64>() < self.inverse_branching {
+        while lvl < self.k_max_height && rand::thread_rng().gen::<f64>() < self.inverse_branching {
             lvl += 1;
         }
         lvl
@@ -111,7 +109,9 @@ where
                         break;
                     } else {
                         let x_next_node = x_next.unwrap().as_ptr();
-                        if node.element > (*x_next_node).element {
+                        if node.element < (*x_next_node).element {
+                            // cannot insert duplicates
+                            assert!(!(node.element == (*x_next_node).element));
                             break;
                         }
                     }
@@ -143,18 +143,19 @@ where
 
 impl<T> Default for SkipList<T>
 where
-    T: Ord,
+    T: Ord + Default,
 {
     /// Creates an empty `SkipList<T>`
     #[inline]
     fn default() -> Self {
+        // supposed to be good up to 2^16 elements
         Self::new(16, 4)
     }
 }
 
 impl<T> SkipList<T>
 where
-    T: Ord,
+    T: Ord + Default,
 {
     pub fn contains() {}
     pub fn new(max_height: u16, branching_factor: u16) -> SkipList<T> {
@@ -170,7 +171,7 @@ where
     }
 
     pub fn insert(&mut self, elt: T) {
-        self.insert_node(Box::new(Node::new(Some(elt), 0)));
+        self.insert_node(Box::new(Node::new(elt, 0)));
     }
 
     // fn find_greater_or_equal(k: &T) -> Node<T> {}
@@ -210,11 +211,40 @@ impl<'a, T> Iterator for Iter<'a, T> {
                 // this won't panic because len > 0
                 let head_node = self.head.unwrap().as_ptr();
                 self.len -= 1;
-                (*head_node).element.as_ref()
+                Some(&(*head_node).element)
             }
         }
     }
 }
+
+// impl<T> IntoIterator for SkipList<T> {
+//     type Item = T;
+//     type IntoIter = IntoIter<T>;
+//
+//     /// Consumes the list into an iterator yielding elements by value.
+//     #[inline]
+//     fn into_iter(self) -> IntoIter<T> {
+//         IntoIter { list: self }
+//     }
+// }
+
+// impl<'a, T> IntoIterator for &'a SkipList<T>
+// where
+//     T: Ord,
+// {
+//     type Item = &'a T;
+//     type IntoIter = Iter<'a, T>;
+//
+//     fn into_iter(self) -> Iter<'a, T> {
+//         self.iter()
+//     }
+// }
+
+// impl<T: fmt::Debug> fmt::Debug for SkipList<T> {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         f.debug_list().entries(self).finish()
+//     }
+// }
 
 // impl<T> Clone for SkipList<T>
 // where
@@ -240,5 +270,6 @@ mod test {
         assert_eq!(iterator.next(), Some(&"azerty".to_string()));
         assert_eq!(iterator.next(), Some(&"blblblb".to_string()));
         assert_eq!(iterator.next(), Some(&"wewt".to_string()));
+        assert_eq!(iterator.next(), None);
     }
 }
