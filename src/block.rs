@@ -6,11 +6,11 @@ use std::cmp::Ordering;
 /// Layout :
 ///
 /// ```text
-/// +-------------+----------------+--------------+---------------+-------------+
-/// | uuid (u128) | deleted (bool) | version(u32) | key (Vec<u8>) | value (u32) |
-/// +-------------+----------------+--------------+---------------+-------------+
+/// +------------+----------------+--------------+---------------+-------------+
+/// | CRC () | deleted (bool) | version(u32) | key (Vec<u8>) | value (u32) |
+/// +------------+----------------+--------------+---------------+-------------+
 /// ```
-struct Block {
+struct DataBlock {
     pub id: u128,
     pub deleted: bool,
     pub key: Vec<u8>,
@@ -36,3 +36,5 @@ impl PartialOrd for Block {
         Some(self.cmp(other))
     }
 }
+
+impl Default for Block {}

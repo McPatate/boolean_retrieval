@@ -7,7 +7,7 @@ use std::io::{BufReader, BufWriter};
 
 #[derive(Serialize, Deserialize)]
 pub struct InvertedIndex {
-    idx: HashMap<String, Vec<String>>,
+    idx: HashMap<String, Vec<usize>>,
 }
 
 impl InvertedIndex {
@@ -25,25 +25,25 @@ impl InvertedIndex {
         Ok(())
     }
 
-    //     pub fn add_wiki_doc(&mut self, doc: &WikiDoc, doc_id: usize) {
-    //         let tokens = InvertedIndex::tokenizer(doc.r#abstract.clone());
-    //         let lowered_tokens = InvertedIndex::lowercase_filter(tokens);
-    //         for lt in lowered_tokens {
-    //             if self.idx.contains_key(&lt) {
-    //                 let postings = match self.idx.get_mut(&lt) {
-    //                     Some(v) => v,
-    //                     None => panic!("unintialized postings list"),
-    //                 };
-    //                 if !postings.contains(&doc_id) {
-    //                     // TODO compare efficiency
-    //                     // postings.push(doc_id);
-    //                     InvertedIndex::sorted_insert(postings, doc_id);
-    //                 }
-    //             } else {
-    //                 self.idx.insert(lt, vec![doc_id]);
-    //             }
-    //         }
-    //     }
+    pub fn add_wiki_doc(&mut self, doc: &WikiDoc, doc_id: usize) {
+        let tokens = InvertedIndex::tokenizer(doc.r#abstract.clone());
+        let lowered_tokens = InvertedIndex::lowercase_filter(tokens);
+        for lt in lowered_tokens {
+            if self.idx.contains_key(&lt) {
+                let postings = match self.idx.get_mut(&lt) {
+                    Some(v) => v,
+                    None => panic!("unintialized postings list"),
+                };
+                if !postings.contains(&doc_id) {
+                    // TODO compare efficiency
+                    // postings.push(doc_id);
+                    InvertedIndex::sorted_insert(postings, doc_id);
+                }
+            } else {
+                self.idx.insert(lt, vec![doc_id]);
+            }
+        }
+    }
 
     pub fn new() -> InvertedIndex {
         InvertedIndex {
@@ -51,40 +51,40 @@ impl InvertedIndex {
         }
     }
 
-    //     pub fn search(&self, query: &str) -> Option<Vec<usize>> {
-    //         let terms = InvertedIndex::parse_query(query);
-    //         if terms.len() == 3 {
-    //             let p1 = match self.idx.get(&terms[0]) {
-    //                 Some(pl) => pl,
-    //                 None => return None,
-    //             };
-    //             let p2 = match self.idx.get(&terms[2]) {
-    //                 Some(pl) => pl,
-    //                 None => return None,
-    //             };
-    //             if terms[1].contains("OR") {
-    //                 Some(InvertedIndex::merge(p1, p2))
-    //             } else if terms[1].contains("AND") {
-    //                 Some(InvertedIndex::intersect(p1, p2))
-    //             } else {
-    //                 println!("Unsupported operator");
-    //                 None
-    //             }
-    //         } else if terms.len() == 4 {
-    //             let p1 = match self.idx.get(&terms[0]) {
-    //                 Some(pl) => pl,
-    //                 None => return None,
-    //             };
-    //             let p2 = match self.idx.get(&terms[3]) {
-    //                 Some(pl) => pl,
-    //                 None => return None,
-    //             };
-    //             Some(InvertedIndex::intersect_not(p1, p2))
-    //         } else {
-    //             println!("query not supported, options are : OR, AND, AND NOT");
-    //             None
-    //         }
-    //     }
+    pub fn search(&self, query: &str) -> Option<Vec<usize>> {
+        let terms = InvertedIndex::parse_query(query);
+        if terms.len() == 3 {
+            let p1 = match self.idx.get(&terms[0]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            let p2 = match self.idx.get(&terms[2]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            if terms[1].contains("OR") {
+                Some(InvertedIndex::merge(p1, p2))
+            } else if terms[1].contains("AND") {
+                Some(InvertedIndex::intersect(p1, p2))
+            } else {
+                println!("Unsupported operator");
+                None
+            }
+        } else if terms.len() == 4 {
+            let p1 = match self.idx.get(&terms[0]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            let p2 = match self.idx.get(&terms[3]) {
+                Some(pl) => pl,
+                None => return None,
+            };
+            Some(InvertedIndex::intersect_not(p1, p2))
+        } else {
+            println!("query not supported, options are : OR, AND, AND NOT");
+            None
+        }
+    }
 
     fn parse_query(query: &str) -> Vec<String> {
         query.split_terminator(" ").map(|s| s.to_string()).collect()
