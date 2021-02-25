@@ -64,12 +64,10 @@ impl InvertedIndex {
     pub fn search(&self, query: &str) -> Option<Vec<usize>> {
         let tokens = self.to_postfix(query);
         let all_postings: Vec<usize> = (0..self.doc_count).collect();
-        println!("all len = {}", all_postings.len());
         if tokens.is_none() {
             return None;
         }
         let tokens = tokens.unwrap();
-        println!("{:?}", tokens);
         let mut stack: Vec<Vec<usize>> = Vec::with_capacity(tokens.len());
         for token in tokens {
             if !self.operators.contains(&token) {
