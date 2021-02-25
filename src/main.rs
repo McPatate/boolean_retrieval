@@ -12,18 +12,18 @@ fn main() {
         Ok(d) => d,
         Err(e) => panic!("err : {}", e),
     };
-    let mut ii = InvertedIndex::new();
+    let mut ii = InvertedIndex::new(docs.len());
     match ii.open("inv_idx.json") {
-        Ok(_) => println!("succesfully loaded inv idx"),
+        Ok(_) => println!("succesfully loaded inv idx - {} docs", docs.len()),
         Err(e) => panic!("err : {}", e),
     };
-    //    for i in 0..docs.len() {
-    //        ii.add_wiki_doc(&docs[i], i);
-    //    }
-    //    match ii.save("/Users/mc/Documents/boolean_retrieval/inv_idx.json") {
-    //        Ok(_) => println!("saved file succesfully"),
-    //        Err(e) => panic!("err : {}", e),
-    //    };
+    // for i in 0..docs.len() {
+    //     ii.add_wiki_doc(&docs[i], i);
+    // }
+    // match ii.save("/Users/mc/Documents/boolean_retrieval/inv_idx.json") {
+    //     Ok(_) => println!("saved file succesfully"),
+    //     Err(e) => panic!("err : {}", e),
+    // };
     loop {
         let mut s = String::new();
         print!("> ");
@@ -39,7 +39,7 @@ fn main() {
                 }
                 println!("{} hits\n", results.len());
             }
-            None => println!("Nothing found"),
+            None => println!("Nothing found / Invalid query"),
         };
     }
 }
