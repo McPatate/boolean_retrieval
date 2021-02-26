@@ -4,6 +4,19 @@ mod wiki;
 
 use inverted_index::InvertedIndex;
 use std::io::{stdin, stdout, Write};
+use wiki::WikiDoc;
+
+fn naive_search<'a>(query: &'a str, docs: &'a Vec<WikiDoc>) -> Vec<&'a WikiDoc> {
+    let unwanted: &[_] = &[' ', '\t', '\n'];
+    let trimmed = query.trim_matches(unwanted);
+    let mut res: Vec<&WikiDoc> = Vec::new();
+    for doc in docs {
+        if doc.r#abstract.contains(&trimmed) {
+            res.push(doc);
+        }
+    }
+    res
+}
 
 fn main() {
     let docs = match wiki::parse_documents(
@@ -32,6 +45,11 @@ fn main() {
         if let Some('\n') = s.chars().next_back() {
             s.pop();
         }
+        // let res = naive_search(&s, &docs);
+        // for r in &res {
+        //     println!("\n---- {} ----\n{}\n", r.title, r.r#abstract);
+        // }
+        // println!("{} hits", res.len());
         match ii.search(&s) {
             Some(results) => {
                 for r in &results {
